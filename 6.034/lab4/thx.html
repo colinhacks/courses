@@ -1,0 +1,58 @@
+<html>
+<head>
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css" rel="stylesheet">
+<style type="text/css">
+body{
+	margin:0px;
+}
+</style>
+</head>
+<body style="background:red;">
+<div style="width:75%;margin-left:auto;margin-right:auto;background:white;height:100%;" class="container">
+
+	<div style="width:100%;margin-left:auto;margin-right:auto;color:black;font-style:bold;font-size:2em;border:0px">
+		<div style="width:80%;margin-left:auto;margin-right:auto;">
+			<center>That awkward moment when Zipcar, Lyft, [Mega|Bolt|Greyhound] Bus, and the HyperLoop still can't get you home for Thanksgiving.</center>
+		</div> 
+	</div>
+	<br/>
+	<br/>
+	<div>
+		<div style="width:40%;margin-left:7%;float:left;">
+		Rides from Boston to:
+			<table style="width:100%" class="table table-hover">
+			<tr style="width:100%">
+				<td style="width:60%">Location</td>
+				<td style="width:20%">Time</td>
+				<td style="width:20%">Email</td>
+			</tr>
+			<tr>
+				<td style="width:60%">Location</td>
+				<td style="width:20%">Time</td>
+				<td style="width:20%">Email</td>
+			</tr>
+			<tr>
+				<td style="width:60%">Location</td>
+				<td style="width:20%">Time</td>
+				<td style="width:20%">Email</td>
+			</tr>
+			</table>
+		</div>
+		<div style="width:40%;margin-right:7%;float:right;">
+		Rides to Boston from:
+			<table style="width:100%" class="table table-hover">
+			{% for ride in inrides %}
+			<tr style="width:100%">
+				<td style="width:60%">{{ ride.location }}</td>
+				<td style="width:20%">{{ ride.date | date:"M j, gA" }}</td>
+				<td style="width:20%">
+					<script language="JavaScript"><document.write("<a href=\"mailto:{{ ride.driveremail }}?body=" + encodeURIComponent("Hey, are you still looking for another person on the drive to {{ ride.location }}?") + "\"><i class=\"icon-envelope\"></i></a>")
+					</script>"
+				</td>
+			</tr>
+			{% endfor %}
+			</table>
+		</div>
+	</div>
+</div>
+</body></html>

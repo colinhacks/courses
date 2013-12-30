@@ -1,0 +1,237 @@
+.include "/mit/6.004/jsim/nominal.jsim"
+.include "/mit/6.004/jsim/stdcell.jsim"
+.include "/mit/colinmcd/6004/lab3.jsim"
+
+*.include "/mit/6.004/jsim/lab6pc.jsim"
+*.include "/mit/6.004/jsim/lab6regfile.jsim" 
+*.include "/mit/6.004/jsim/lab6ctl.jsim"
+*.include "/mit/6.004/jsim/lab6basicblock.jsim"
+.include "/mit/6.004/jsim/lab6checkoff.jsim"
+
+********************
+*******  PC   ******
+********************
+.subckt pc clk reset jt[31:0] pcsel[2:0] broffset[31:0] q[31:0] ia[31:0]  //Added JT, pcsel, broffset, made Q available outside of ckt
+
+*** create variable temp 
+Xcxnmidfive ia[31] jt[31] temp and2
+
+
+Xmuxthree pcsel[2]#32 ia[31] q[30:0] vdd 0#27 vdd 0#3 midthree[31:0] mux2 // Distinguishes between PC+4 and XAdr
+
+** IMPLEMENT JT, BROFFSET
+Xmuxfour pcsel[0]#32 pcsel[1]#32 midthree[31:0]          ia[31] broffset[30:0] temp jt[30:2] 0#2    vdd 0#28 vdd 0#2    midtwo[31:0] mux4 //splits up the rest of PCSEL
+*       || control signals     || either Xadr or pc+4 ||  const sprvsr        || temp+JT         ||    IllOp         ||   OUTPUT                                      
+
+*** Reset PC is reset is driven
+Xmuxtwo reset#32 midtwo[31:0] vdd 0#31 mid[31:0] mux2
+
+**** Register
+Xdreg mid[31:0] clk#32 ia[31:0] dreg
+
+*** Adder, adding 4 to ia[31:0]
+Xadder 0#2 0#29 vdd 0#2 ia[31:0] q[31:0] Z V N adder
+.ends
+
+
+.subckt detectones a[4:0] out
+Xanda a[4] a[3] a[2] a[1] andmid and4
+Xandb andmid a[0] out and2
+.ends
+
+
+********************
+*******  REG  ******
+********************
+.subckt regfile clk werf ra2sel ra[4:0] rb[4:0] rc[4:0] wdata[31:0] radata[31:0] rbdata[31:0] // added jt and z
+
+Xrmux ra2sel#5 rb[4:0] rc[4:0] ra2mux[4:0] mux2
+Xregfile
+ + vdd 0 0 ra[4:0] adata[31:0] // A read port 
+ + vdd 0 0 ra2mux[4:0] bdata[31:0] // B read port
+ + 0 clk werf rc[4:0] wdata[31:0] // write port 
+ + $memory width=32 nlocations=31 
+
+Xchecka ra[4:0] checkone detectones
+Xcheckb ra2mux[4:0] checktwo detectones
+
+Xbmux checktwo#32 bdata[31:0] 0#32 rbdata[31:0] mux2
+Xamux checkone#32 adata[31:0] 0#32 radata[31:0] mux2
+*.connect bdata[31:0] rbdata[31:0]
+
+
+.ends 
+
+********************
+*******  CTL  ******
+********************
+.subckt ctl reset id[31:26] Z IRQ pcsel[2:0] ra2sel asel bsel alufn[4:0] wdsel[1:0] werf moe wr wasel
+
+
+ Xctl vdd 0 0 id[31:26] // one read port
+ + ttpcsel[2:0] twasel asel ra2sel bsel alufn[4:0] twdsel[1:0] twerf moe xwr 
+ + $memory width=17 nlocations=64 contents=( 
+
+ + 0b01110000000000100 // opcode=0b0  num: 0
+ + 0b01110000000000100 // opcode=0b1  num: 1
+ + 0b01110000000000100 // opcode=0b10  num: 2
+ + 0b01110000000000100 // opcode=0b11  num: 3
+ + 0b01110000000000100 // opcode=0b100  num: 4
+ + 0b01110000000000100 // opcode=0b101  num: 5
+ + 0b01110000000000100 // opcode=0b110  num: 6
+ + 0b01110000000000100 // opcode=0b111  num: 7
+ + 0b01110000000000100 // opcode=0b1000  num: 8
+ + 0b01110000000000100 // opcode=0b1001  num: 9
+ + 0b01110000000000100 // opcode=0b1010  num: 10
+ + 0b01110000000000100 // opcode=0b1011  num: 11
+ + 0b01110000000000100 // opcode=0b1100  num: 12
+ + 0b01110000000000100 // opcode=0b1101  num: 13
+ + 0b01110000000000100 // opcode=0b1110  num: 14
+ + 0b01110000000000100 // opcode=0b1111  num: 15
+ + 0b01110000000000100 // opcode=0b10000  num: 16
+ + 0b01110000000000100 // opcode=0b10001  num: 17
+ + 0b01110000000000100 // opcode=0b10010  num: 18
+ + 0b01110000000000100 // opcode=0b10011  num: 19
+ + 0b01110000000000100 // opcode=0b10100  num: 20
+ + 0b01110000000000100 // opcode=0b10101  num: 21
+ + 0b01110000000000100 // opcode=0b10110  num: 22
+ + 0b01110000000000100 // opcode=0b10111  num: 23
+ + 0b00000010000010110 // opcode=0b11000  num: 24    LD
+ + 0b00000110000000001 // opcode=0b11001  num: 25    ST
+ + 0b01110000000000100 // opcode=0b11010  num: 26    
+ + 0b01000000000000100 // opcode=0b11011  num: 27    JMP
+ + 0b00100000000000100 // opcode=0b11100  num: 28    BEQ  Z
+ + 0b00100000000000100 // opcode=0b11101  num: 29    BNE  sqiggle Z
+ + 0b01110000000000100 // opcode=0b11110  num: 30    
+ + 0b00001001101010110 // opcode=0b11111  num: 31    LDR
+ + 0b00000000000001100 // opcode=0b100000  num: 32    ADD
+ + 0b00000000000101100 // opcode=0b100001  num: 33    SUB
+ + 0b00000000001001100 // opcode=0b100010  num: 34    MUL*
+ + 0b00000001111101100 // opcode=0b100011  num: 35    DIV* the ones are the ALUFN
+ + 0b00000000010101100 // opcode=0b100100  num: 36    CMPEQ
+ + 0b00000000011101100 // opcode=0b100101  num: 37    CMPLT
+ + 0b00000000110101100 // opcode=0b100110  num: 38    CMPLE
+ + 0b01110000000000100 // opcode=0b100111  num: 39    
+ + 0b00000001100001100 // opcode=0b101000  num: 40    AND
+ + 0b00000001111001100 // opcode=0b101001  num: 41    OR
+ + 0b00000001011001100 // opcode=0b101010  num: 42    XOR
+ + 0b00000001100101100 // opcode=0b101011  num: 43    XNOR
+ + 0b00000000100001100 // opcode=0b101100  num: 44    SHL
+ + 0b00000000100101100 // opcode=0b101101  num: 45    SHR
+ + 0b00000000101101100 // opcode=0b101110  num: 46    SRA
+ + 0b01110000000000100 // opcode=0b101111  num: 47    
+ + 0b00000010000001100 // opcode=0b100000  num: 48    ADDC
+ + 0b00000010000101100 // opcode=0b100001  num: 49    SUBC
+ + 0b00000010001001100 // opcode=0b100010  num: 50    MULC*
+ + 0b00000011111101100 // opcode=0b100011  num: 51    DIVC*  the ones are the alufn
+ + 0b00000010010101100 // opcode=0b100100  num: 52    CMPEQC
+ + 0b00000010011101100 // opcode=0b100101  num: 53    CMPLTC
+ + 0b00000010110101100 // opcode=0b100110  num: 54    CMPLEC
+ + 0b01110000000000100 // opcode=0b110111  num: 55    
+ + 0b00000011100001100 // opcode=0b101000  num: 56    ANDC
+ + 0b00000011111001100 // opcode=0b101001  num: 57    ORC
+ + 0b00000011011001100 // opcode=0b101010  num: 58    XORC
+ + 0b00000011100101100 // opcode=0b101011  num: 59    XNORC
+ + 0b00000010100001100 // opcode=0b101100  num: 60    SHLC
+ + 0b00000010100101100 // opcode=0b101101  num: 61    SHRC
+ + 0b00000010101101100 // opcode=0b101110  num: 62    SRAC
+ + 0b01110000000000100 // opcode=0b111110  num: 63    
+ + ) 
+
+
+
+
+Xmuxx reset xwr 0 twr mux2
+** invert z
+Xinv Z IZ inverter
+*** assign either Z or IZ to tempz depending on last bit of opcode
+Xshljkkdj id[26] Z IZ tempz mux2
+** assign tempz to tpcsel for BEQ/BNE but nothing else
+Xdfgkjbd ttpcsel[0]#3 ttpcsel[1]#3 ttpcsel[2:0] 0 0 tempz ttpcsel[2:0] ttpcsel[2:0] tpcsel[2:0] mux4
+
+** IRQ conditionals
+Xmusdfxsdfhb IRQ twerf vdd werf mux2
+Xmsuxshdf IRQ#2 twdsel[1:0] 0#2 wdsel[1:0] mux2
+Xmuaxsdfh IRQ twr 0 wr mux2
+Xmuxsdfdhb IRQ#3 tpcsel[2:0] vdd 0#2 pcsel[2:0] mux2
+*Xmuxirqone tpcsel[0] id[26] midpcsel[2:0] 
+Xmuqselectwasel IRQ twasel vdd wasel mux2
+
+
+.ends
+
+
+********************
+******* BETA  ******
+********************
+.subckt beta clk reset irq ia[31:0] id[31:0] ma[31:0] moe mrd[31:0] wr mwd[31:0] 
+
+****** PC **********
+*OLD VERSION: Xpc clk reset ia[31:0] pc 
+Xpc clk reset radata[31:0] pcsel[2:0] broffset[31:0] q[31:0] ia[31:0] pc // q and ia now available
+**  clk reset jt[31:0]     pcsel[2:0] broffset[31:0] q[31:0] ia[31:0] 
+       
+
+
+****** CTL **********
+*implement logic that does AND operation on IRQ and
+Xirqmux ia[31] IRQ 0 rirq mux2 
+Xctl reset id[31:26] Z rirq pcsel[2:0] ra2sel asel bsel alufn[4:0] wdsel[1:0] werf moe wr wasel ctl //added Z
+
+
+
+****** REG **********
+
+Xwaselmux wasel#5 rc[4:0] vdd#4 0 wdselrc[4:0] mux2
+Xregfile clk werf ra2sel ra[4:0] rb[4:0] wdselrc[4:0] wdata[31:0] radata[31:0] rbdata[31:0] regfile //added jt, z
+*        clk werf ra2sel ra[4:0] rb[4:0] rc[4:0]      wdata[31:0] radata[31:0] rbdata[31:0]
+
+***** Getting Z
+Xnorone radata[31:28] zone nor4
+Xnoroe radata[27:24] ztwo nor4
+Xnorne radata[23:20] zthree nor4
+Xnoone radata[19:16] zfour nor4
+Xnrone radata[15:12] zfive nor4
+Xnoarone radata[11:8] zsix nor4
+Xnordone radata[7:4] zsev nor4
+Xnorofne radata[3:0] zete nor4
+Xzandone zone ztwo zthree zfour bigzandone and4
+Xzandtwo zfive zsix zsev zete bigzandtwo and4
+Xzfinal bigzandone bigzandtwo Z and2
+
+
+****** Joins **********
+Xjnfour rbdata[31:0] mwd[31:0] join  //define mwd
+Xjnfive id[15:0] sec[15:0] join   //   Sign extending constant
+Xjnsix id15#16 sec[31:16] join    //            ''
+Xjnone id[20:16] ra[4:0] join    //define ra
+Xjntwo id[15:11] rb[4:0] join   //define rb
+Xjnthree id[25:21] rc[4:0] join  //define rc
+
+*****  Calculating broffset  ******
+Xadder 0#2 q[31:0] sec[29:0] 0#2 broffset[31:0] ZZZ VVV NNN adder
+
+****** Bsel ****
+Xbselmux bsel#32 rbdata[31:0] sec[31:0] newrbdata[31:0] mux2
+
+****** Asel ******
+Xaselmux asel#32 radata[31:0] 0 broffset[30:0] aseldata[31:0] mux2
+
+
+******* ALU **********
+Xalu alufn[4:0] aseldata[31:0] newrbdata[31:0] ma[31:0] ZZ VV NN alu
+
+***** WDSEL mux ******
+Xwdselmux wdsel[0]#32 wdsel[1]#32  ia[31] q[30:0] ma[31:0] mrd[31:0] 0#32 wdata[31:0] mux4
+* First 0#32 should be output when wdsel is 0
+
+.ends 
+
+********************
+******* JOIN  ******
+********************
+.subckt join C T 
+.connect C T 
+.ends
+
+

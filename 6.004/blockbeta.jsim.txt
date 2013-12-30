@@ -1,0 +1,145 @@
+.include "/mit/6.004/jsim/nominal.jsim"
+.include "/mit/6.004/jsim/stdcell.jsim"
+.include "/mit/colinmcd/6004/lab3.jsim"
+
+*.include "/mit/6.004/jsim/lab6pc.jsim"
+*.include "/mit/6.004/jsim/lab6regfile.jsim" 
+*.include "/mit/6.004/jsim/lab6ctl.jsim"
+.include "/mit/6.004/jsim/lab6basicblock.jsim"
+
+.subckt pc clk reset ia[31:0]
+Xmuxtwo reset#32 q[31:0] 0#32 mid[31:0] mux2
+
+Xdreg mid[31:0] clk#32 ia[31:0] dreg
+Xadder 0#2 0#29 vdd 0#2 ia[31:0] q[31:0] Z V N adder
+.ends
+
+
+.subckt detectones a[4:0] out
+Xanda a[4] a[3] a[2] a[1] andmid and4
+Xandb andmid a[0] out and2
+.ends
+
+
+.subckt regfile clk werf ra2sel ra[4:0] rb[4:0] rc[4:0] wdata[31:0] radata[31:0] rbdata[31:0] 
+
+Xrmux ra2sel#5 rb[4:0] rc[4:0] ra2mux[4:0] mux2
+Xregfile
+ + vdd 0 0 ra[4:0] adata[31:0] // A read port 
+ + vdd 0 0 ra2mux[4:0] bdata[31:0] // B read port
+ + 0 clk werf rc[4:0] wdata[31:0] // write port 
+ + $memory width=32 nlocations=31 
+
+Xchecka ra[4:0] checkone detectones
+Xcheckb ra2mux[4:0] checktwo detectones
+
+Xbmux checktwo#32 bdata[31:0] 0#32 rbdata[31:0] mux2
+Xamux checkone#32 adata[31:0] 0#32 radata[31:0] mux2
+*.connect bdata[31:0] rbdata[31:0]
+
+
+
+.ends 
+
+
+.subckt ctl reset id[31:26] ra2sel bsel alufn[4:0] wdsel[1:0] werf moe wr 
+
+
+ Xctl vdd 0 0 id[31:26] // one read port 
+ + pcsel[2:0] wasel asel ra2sel bsel alufn[4:0] wdsel[1:0] werf moe xwr 
+ + $memory width=17 nlocations=64 contents=( 
+ + 0b00000000000000000 // opcode=0b0  num: 0
+ + 0b00000000000000000 // opcode=0b1  num: 1
+ + 0b00000000000000000 // opcode=0b10  num: 2
+ + 0b00000000000000000 // opcode=0b11  num: 3
+ + 0b00000000000000000 // opcode=0b100  num: 4
+ + 0b00000000000000000 // opcode=0b101  num: 5
+ + 0b00000000000000000 // opcode=0b110  num: 6
+ + 0b00000000000000000 // opcode=0b111  num: 7
+ + 0b00000000000000000 // opcode=0b1000  num: 8
+ + 0b00000000000000000 // opcode=0b1001  num: 9
+ + 0b00000000000000000 // opcode=0b1010  num: 10
+ + 0b00000000000000000 // opcode=0b1011  num: 11
+ + 0b00000000000000000 // opcode=0b1100  num: 12
+ + 0b00000000000000000 // opcode=0b1101  num: 13
+ + 0b00000000000000000 // opcode=0b1110  num: 14
+ + 0b00000000000000000 // opcode=0b1111  num: 15
+ + 0b00000000000000000 // opcode=0b10000  num: 16
+ + 0b00000000000000000 // opcode=0b10001  num: 17
+ + 0b00000000000000000 // opcode=0b10010  num: 18
+ + 0b00000000000000000 // opcode=0b10011  num: 19
+ + 0b00000000000000000 // opcode=0b10100  num: 20
+ + 0b00000000000000000 // opcode=0b10101  num: 21
+ + 0b00000000000000000 // opcode=0b10110  num: 22
+ + 0b00000000000000000 // opcode=0b10111  num: 23
+ + 0b00000010000010110 // opcode=0b11000  num: 24    LD
+ + 0b00000110000000001 // opcode=0b11001  num: 25    ST
+ + 0b00000000000000000 // opcode=0b11010  num: 26    
+ + 0b01000000000000100 // opcode=0b11011  num: 27    JMP
+ + 0bZZZ00000000000100 // opcode=0b11100  num: 28    BEQ  Z
+ + 0bZZZ00000000000100 // opcode=0b11101  num: 29    BNE  sqiggle Z
+ + 0b00000000000000000 // opcode=0b11110  num: 30    
+ + 0b00001001101010110 // opcode=0b11111  num: 31    LDR
+ + 0b00000000000001100 // opcode=0b100000  num: 32    ADD
+ + 0b00000000000101100 // opcode=0b100001  num: 33    SUB
+ + 0b00000000001001100 // opcode=0b100010  num: 34    MUL*
+ + 0b00000001111101100 // opcode=0b100011  num: 35    DIV* the ones are the ALUFN
+ + 0b00000000010101100 // opcode=0b100100  num: 36    CMPEQ
+ + 0b00000000011101100 // opcode=0b100101  num: 37    CMPLT
+ + 0b00000000110101100 // opcode=0b100110  num: 38    CMPLE
+ + 0b00000000000000000 // opcode=0b100111  num: 39    
+ + 0b00000001100001100 // opcode=0b101000  num: 40    AND
+ + 0b00000001111001100 // opcode=0b101001  num: 41    OR
+ + 0b00000001011001100 // opcode=0b101010  num: 42    XOR
+ + 0b00000001100101100 // opcode=0b101011  num: 43    XNOR
+ + 0b00000000100001100 // opcode=0b101100  num: 44    SHL
+ + 0b00000000100101100 // opcode=0b101101  num: 45    SHR
+ + 0b00000000101101100 // opcode=0b101110  num: 46    SRA
+ + 0b00000000000000000 // opcode=0b101111  num: 47    
+ + 0b00000010000001100 // opcode=0b100000  num: 48    ADDC
+ + 0b00000010000101100 // opcode=0b100001  num: 49    SUBC
+ + 0b00000010001001100 // opcode=0b100010  num: 50    MULC*
+ + 0b00000011111101100 // opcode=0b100011  num: 51    DIVC*  the ones are the alufn
+ + 0b00000010010101100 // opcode=0b100100  num: 52    CMPEQC
+ + 0b00000010011101100 // opcode=0b100101  num: 53    CMPLTC
+ + 0b00000010110101100 // opcode=0b100110  num: 54    CMPLEC
+ + 0b00000000000000000 // opcode=0b110111  num: 55    
+ + 0b00000011100001100 // opcode=0b101000  num: 56    ANDC
+ + 0b00000011111001100 // opcode=0b101001  num: 57    ORC
+ + 0b00000011011001100 // opcode=0b101010  num: 58    XORC
+ + 0b00000011100101100 // opcode=0b101011  num: 59    XNORC
+ + 0b00000010100001100 // opcode=0b101100  num: 60    SHLC
+ + 0b00000010100101100 // opcode=0b101101  num: 61    SHRC
+ + 0b00000010101101100 // opcode=0b101110  num: 62    SRAC
+ + 0b00000000000000000 // opcode=0b111110  num: 63    
+ + ) 
+
+
+Xmuxx reset xwr 0 wr mux2
+
+.ends
+
+.subckt beta clk reset ia[31:0] id[31:0] ma[31:0] moe mrd[31:0] wr mwd[31:0] 
+
+Xpc clk reset ia[31:0] pc
+Xctl reset id[31:26] ra2sel bsel alufn[4:0] wdsel[1:0] werf moe wr ctl
+Xjnone id[20:16] ra[4:0] join
+Xjntwo id[15:11] rb[4:0] join
+Xjnthree id[25:21] rc[4:0] join
+
+Xregfile clk werf ra2sel ra[4:0] rb[4:0] rc[4:0] wdata[31:0] radata[31:0] rbdata[31:0] regfile
+
+Xjnfour rbdata[31:0] mwd[31:0] join
+Xjnfive id[15:0] sec[15:0] join
+Xjnsix id15#16 sec[31:16] join
+
+Xbselmux bsel#32 rbdata[31:0] sec[31:0] newrbdata[31:0] mux2
+Xalu alufn[4:0] radata[31:0] newrbdata[31:0] ma[31:0] z v n alu
+Xwdselmux wdsel1#32 wdsel0#32 0#32 mrd[31:0] ma[31:0] 0#32 wdata[31:0] mux4
+* First 0#32 should be output when wdsel is 0
+
+.ends 
+
+.subckt join C T 
+.connect C T 
+.ends
