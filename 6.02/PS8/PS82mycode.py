@@ -2,7 +2,42 @@ import random,sys,math
 import netsim
 
 def dijkstra(src, LSAd):
-    # add your code here
+    parents={}
+    print "LSAd: ",LSAd
+    routes={}
+    visited=set()
+    dist={src:0}
+    heap = [(src,0)]
+    while heap:
+        print "HEAP: ",heap
+        heap = sorted(heap,key=lambda x:x[1])
+        next=heap.pop(0)[0]
+
+        if next not in visited:
+            visited.add(next)
+            print "next"
+            print next
+            print LSAd[next]
+            for (node,distance) in LSAd[next]:
+                
+                if node not in visited:
+                    heap.append((node,distance))
+                    parents[node]=next
+                    dist[node]=dist[next]+distance
+
+    print "parents: ",parents
+    for node in dist.keys():
+        if node!=src:
+            active=node
+            path=[node]
+            while active != src:
+                path.insert(0,parents[active])
+                active=parents[active]
+            print path
+            routes[node]=path[1]
+    routes[src]=src
+    return (dist,routes)
+
     
     
 
